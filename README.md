@@ -1,84 +1,88 @@
 # DataPipeline: Airflow + Spark
 
-A modular **Data Pipeline** combining **Apache Airflow** and **Apache Spark** to orchestrate and process data workflows efficiently. This project is designed for scalability, extensibility, and handles both batch and streaming data processing.
+A production-ready **Data Pipeline** combining **Apache Airflow 2.8.1** and **Apache Spark 3.5.0** for orchestrating and processing distributed data workflows. Clone this repository and start running Spark jobs from Airflow in minutes!
 
 ---
 
 ## 📋 Table of Contents
 
 - [Features](#features)
-- [Project Structure](#project-structure)
+- [What's Included](#whats-included)
 - [Technologies](#technologies)
 - [Prerequisites](#prerequisites)
-- [Setup](#setup)
+- [Quick Start](#quick-start)
 - [Usage](#usage)
-- [Dockerization](#dockerization)
-- [Configuration](#configuration)
+- [Creating Your Own Pipelines](#creating-your-own-pipelines)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
 ## ✨ Features
 
-- **Workflow Orchestration**: Leverage Apache Airflow for complex DAG scheduling
-- **Distributed Processing**: Apache Spark for scalable batch and streaming data processing
-- **Containerized Environment**: Full Docker Compose setup for easy deployment
-- **Modular Architecture**: Clean separation of concerns with extensible structure
-- **Production Ready**: Includes logging, monitoring, and error handling
+- **Full Airflow Integration**: Complete Airflow setup with webserver, scheduler, and PostgreSQL backend
+- **Spark Cluster**: Master-worker Spark cluster configuration for distributed processing
+- **Working Example**: Pre-configured DAG demonstrating Spark job submission
+- **Containerized Environment**: Docker Compose orchestration for all services
+- **Ready to Run**: Clone and start - no additional configuration needed
+- **Production Ready**: Includes proper initialization, user management, and logging
 
 ---
 
-## 📁 Project Structure
+## 📦 What's Included
+
+When you clone this repository, you get everything you need:
+
+### ✅ **Pre-Configured Files**
+- **Docker Compose** setup for all services
+- **Airflow Dockerfile** with Java and PySpark
+- **Spark Dockerfile** for cluster nodes
+- **Example DAG** (`hello_spark_dag.py`) - ready to run
+- **Sample Spark Job** (`hello_spark.py`) - working PySpark script
+
+### 📁 **Project Structure**
 
 ```
 DataPipeLine/
-├── airflow/                # Airflow core setup
-│   ├── Dockerfile         # Airflow container configuration
-│   └── airflow.cfg        # Airflow configuration file
-├── dags/                   # Airflow DAGs (Directed Acyclic Graphs)
-│   └── example_dag.py     # Sample DAG file
-├── logs/                   # Airflow execution logs
-├── plugins/                # Airflow custom plugins
-├── scripts/                # Helper scripts for Spark jobs
-│   └── spark_job.py       # Sample Spark processing script
-├── spark/                  # Spark configurations
-│   ├── Dockerfile         # Spark container configuration
-│   └── spark-defaults.conf # Spark configuration
-├── .env                    # Environment variables
-├── .gitignore             # Git ignore rules
-├── docker-compose.yaml    # Multi-container orchestration
-└── README.md              # This file
+├── airflow/
+│   └── Dockerfile               # Airflow with Java & PySpark
+├── dags/
+│   └── hello_spark_dag.py       # Example DAG
+├── logs/                        # Auto-generated during runtime
+├── plugins/                     # For custom Airflow plugins
+├── scripts/
+│   └── hello_spark.py           # Sample PySpark job
+├── spark/
+│   └── Dockerfile               # Spark base official image
+├── connection                   # Airflow connection setup
+├── docker-compose.yaml          # Full orchestration 
+└── README.md                    # documentation
 ```
-
----
 
 ## 🛠 Technologies
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| **Apache Airflow** | 2.x | Workflow orchestration and scheduling |
-| **Apache Spark** | 3.x | Distributed data processing |
-| **Docker** | 20.x+ | Containerization |
+| **Apache Airflow** | 2.8.1 | Workflow orchestration and scheduling |
+| **Apache Spark** | 3.5.0 | Distributed data processing |
+| **PostgreSQL** | 13 | Airflow metadata database |
 | **Docker Compose** | 2.x+ | Multi-container orchestration |
-| **PostgreSQL** | 13+ | Airflow metadata database |
-| **Python** | 3.8+ | Scripting and DAG definitions |
+| **PySpark** | 3.5.0 | Python API for Spark |
+| **OpenJDK** | 17 | Java runtime for Spark |
 
 ---
 
 ## 📦 Prerequisites
 
-Before you begin, ensure you have the following installed:
-
-- **Docker**: [Install Docker](https://docs.docker.com/get-docker/)
-- **Docker Compose**: [Install Docker Compose](https://docs.docker.com/compose/install/)
-- **Git**: [Install Git](https://git-scm.com/downloads)
-- Minimum **8GB RAM** and **20GB disk space** recommended
+- **Docker Desktop** or **Docker Engine** (20.x+)
+- **Docker Compose** (v2.x recommended)
+- Minimum **8GB RAM** allocated to Docker
+- Minimum **20GB disk space**
+- **Git** for cloning
 
 ---
 
-## 🚀 Setup
+## 🚀 Quick Start
 
 ### 1. Clone the Repository
 
@@ -87,137 +91,346 @@ git clone https://github.com/MoradBoussagman/DataPipeLine.git
 cd DataPipeLine
 ```
 
-### 2. Configure Environment Variables
-
-Edit the `.env` file to customize your setup:
-
-```bash
-# Example .env configuration
-AIRFLOW_UID=50000
-AIRFLOW_GID=0
-POSTGRES_USER=airflow
-POSTGRES_PASSWORD=airflow
-POSTGRES_DB=airflow
-```
-
-### 3. Build and Start Containers
+### 2. Build and Start
 
 ```bash
 # Build Docker images
 docker compose build
 
-# Start all services in detached mode
+# Start all services
 docker compose up -d
 ```
 
-### 4. Initialize Airflow Database
+
+### 3. Verify Everything is Running
 
 ```bash
-# Run database migrations (first time only)
-docker compose run airflow-webserver airflow db init
+docker compose ps
 ```
 
-### 5. Create Airflow Admin User
-
-```bash
-docker compose run airflow-webserver airflow users create \
-    --username admin \
-    --firstname Admin \
-    --lastname User \
-    --role Admin \
-    --email admin@example.com \
-    --password admin
+Expected output:
+```
+NAME                    STATUS
+postgres                Up
+spark-master            Up
+spark-worker            Up
+airflow-webserver       Up (healthy)
+airflow-scheduler       Up
+airflow-init            Exited (0)
 ```
 
-### 6. Access the Services
+### 4. Access the Interfaces
 
-- **Airflow UI**: http://localhost:8080
+- **Airflow UI**: http://localhost:8085
   - Username: `admin`
   - Password: `admin`
-- **Spark Master UI**: http://localhost:8081
-- **Spark Worker UI**: http://localhost:8082
+- **Spark Master UI**: http://localhost:8080
 
 ---
 
 ## 💡 Usage
 
-### Creating DAGs
+### Running the Included Example
 
-1. Place your DAG files in the `dags/` directory
-2. Use the following template for a basic DAG:
+The repository includes a working example DAG that you can run immediately!
 
-```python
-from airflow import DAG
-from airflow.operators.bash import BashOperator
-from datetime import datetime, timedelta
+#### Step 1: Set Up Spark Connection
 
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'start_date': datetime(2024, 1, 1),
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
-}
+Choose **ONE** of these methods:
 
-dag = DAG(
-    'my_pipeline',
-    default_args=default_args,
-    description='My data pipeline',
-    schedule_interval=timedelta(days=1),
-)
+**Option A: Via Airflow UI (Recommended)**
 
-task1 = BashOperator(
-    task_id='run_spark_job',
-    bash_command='spark-submit /scripts/spark_job.py',
-    dag=dag,
-)
+1. Open http://localhost:8085 and login
+2. Go to **Admin → Connections**
+3. Click **+** to add a new connection
+4. Fill in:
+   - **Connection Id**: `spark_cluster`
+   - **Connection Type**: `Spark`
+   - **Host**: `spark-master`
+   - **Port**: `7077`
+5. Click **Save**
+
+**Option B: Via CLI**
+
+```bash
+docker compose exec airflow-webserver airflow connections add \
+    'spark_cluster' \
+    --conn-type 'spark' \
+    --conn-host 'spark-master' \
+    --conn-port '7077'
 ```
 
-### Running Spark Jobs
 
-Place your Spark scripts in the `scripts/` directory:
+#### Step 2: Run the Example DAG
 
-```python
-# scripts/spark_job.py
-from pyspark.sql import SparkSession
+1. In Airflow UI, find the DAG **`hello_spark_cluster`**
+2. Toggle the DAG to **ON** (unpause)
+3. Click **▶️ Trigger DAG** button
+4. Click on the running task → **Log** to see output
 
-spark = SparkSession.builder \
-    .appName("MySparkJob") \
-    .getOrCreate()
+#### Step 3: Check Results
 
-# Your Spark processing logic here
-df = spark.read.csv("/data/input.csv")
-df.show()
+You should see in the logs:
+
 ```
+==================================================
+HELLO WORLD FROM SPARK CLUSTER
+==================================================
++-----+-----+
+| word|count|
++-----+-----+
+|Hello|    1|
+|World|    2|
+| from|    3|
+|Spark|    4|
++-----+-----+
 
-### Monitoring
-
-- Check DAG status in Airflow UI
-- View logs in the `logs/` directory
-- Monitor Spark jobs in Spark Master UI
+Spark job completed successfully!
+```
 
 ---
 
-## 🐳 Dockerization
+## 🔨 Creating Your Own Pipelines
 
-### Services Overview
+Now that the example works, create your own data pipelines!
 
-The `docker-compose.yaml` defines the following services:
+### Adding a New Spark Job
 
-| Service | Description | Port |
-|---------|-------------|------|
-| **postgres** | Airflow metadata database | 5432 |
-| **airflow-webserver** | Airflow web interface | 8080 |
-| **airflow-scheduler** | Airflow task scheduler | - |
-| **spark-master** | Spark master node | 7077, 8081 |
-| **spark-worker** | Spark worker node | 8082 |
-
-### Useful Docker Commands
+**1. Create your PySpark script in `scripts/` folder:**
 
 ```bash
-# View running containers
-docker compose ps
+# Create new file: scripts/my_processing.py
+```
 
-# View
+```python
+from pyspark.sql import SparkSession
+
+def main():
+    spark = SparkSession.builder \
+        .appName("MyProcessing") \
+        .getOrCreate()
+    
+    # Your data processing logic
+    data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
+    df = spark.createDataFrame(data, ["name", "age"])
+    
+    # Process data
+    result = df.filter(df.age > 25)
+    result.show()
+    
+    spark.stop()
+
+if __name__ == "__main__":
+    main()
+```
+
+**2. Create your DAG in `dags/` folder:**
+
+```bash
+# Create new file: dags/my_pipeline.py
+```
+
+```python
+from airflow import DAG
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from datetime import datetime
+
+default_args = {
+    "owner": "airflow",
+    "start_date": datetime(2026, 1, 1),
+}
+
+with DAG(
+    dag_id="my_data_pipeline",
+    default_args=default_args,
+    schedule="@daily",  # Run every day
+    catchup=False,
+    tags=["production"]
+) as dag:
+
+    run_processing = SparkSubmitOperator(
+        task_id="run_processing",
+        application="/opt/airflow/scripts/my_processing.py",
+        conn_id="spark_cluster",
+        name="my_processing_job",
+        conf={"spark.master": "spark://spark-master:7077"}
+    )
+```
+
+**3. Your new DAG will automatically appear in Airflow UI!**
+
+No restart needed - Airflow watches the `dags/` folder automatically.
+
+### DAG Schedule Options
+
+```python
+schedule="@daily"        # Every day at midnight
+schedule="@hourly"       # Every hour
+schedule="0 9 * * *"     # Every day at 9 AM
+schedule="*/15 * * * *"  # Every 15 minutes
+schedule=None            # Manual trigger only
+```
+
+---
+
+## 🛠 Useful Commands
+
+### Managing Services
+
+```bash
+# View logs
+docker compose logs -f [service-name]
+
+# Stop all services
+docker compose down
+
+# Restart specific service
+docker compose restart airflow-scheduler
+
+# Remove everything (including data)
+docker compose down -v
+```
+
+### Airflow Commands
+
+```bash
+# List all DAGs
+docker compose exec airflow-webserver airflow dags list
+
+# Test a DAG
+docker compose exec airflow-webserver airflow dags test my_data_pipeline
+
+# Check DAG for errors
+docker compose exec airflow-webserver airflow dags list-import-errors
+
+# Create a new admin user
+docker compose exec airflow-webserver airflow users create \
+    --username myuser \
+    --password mypass \
+    --firstname John \
+    --lastname Doe \
+    --role Admin \
+    --email john@example.com
+```
+
+### Spark Commands
+
+```bash
+# Check Spark master status
+docker compose logs spark-master
+
+# Check Spark worker status
+docker compose logs spark-worker
+
+# Submit Spark job manually
+docker compose exec spark-master spark-submit \
+    --master spark://spark-master:7077 \
+    /opt/airflow/scripts/hello_spark.py
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### DAG Not Appearing?
+
+```bash
+# Check for import errors
+docker compose exec airflow-webserver airflow dags list-import-errors
+
+# Restart scheduler
+docker compose restart airflow-scheduler
+
+# Check DAG file is mounted
+docker compose exec airflow-webserver ls /opt/airflow/dags
+```
+
+### Connection Not Working?
+
+```bash
+# List all connections
+docker compose exec airflow-webserver airflow connections list
+
+# Test connection
+docker compose exec airflow-webserver airflow connections get spark_cluster
+
+# Delete and recreate
+docker compose exec airflow-webserver airflow connections delete spark_cluster
+docker compose exec airflow-webserver airflow connections add \
+    'spark_cluster' --conn-type 'spark' --conn-host 'spark-master' --conn-port '7077'
+```
+
+### Spark Job Failing?
+
+```bash
+# Check Spark master logs
+docker compose logs spark-master
+
+# Check if workers are connected
+# Open http://localhost:8080 and look for connected workers
+
+# Verify script exists
+docker compose exec airflow-webserver cat /opt/airflow/scripts/hello_spark.py
+```
+
+### Port Already in Use?
+
+Change ports in `.env` file:
+
+```bash
+AIRFLOW_PORT=8090  # Change from 8085
+POSTGRES_PORT=5433  # Change from 5432
+```
+
+Then restart:
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+---
+
+## 📊 Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Airflow Webserver                     │
+│                  (localhost:8085)                        │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Airflow Scheduler                       │
+│              (Monitors and triggers DAGs)                │
+└────────────┬────────────────────────────┬───────────────┘
+             │                            │
+             ▼                            ▼
+┌────────────────────┐          ┌────────────────────────┐
+│    PostgreSQL      │          │    Spark Master        │
+│  (Metadata Store)  │          │  (localhost:8080)      │
+└────────────────────┘          └───────────┬────────────┘
+                                            │
+                                            ▼
+                                ┌────────────────────────┐
+                                │    Spark Worker        │
+                                │  (Executes Jobs)       │
+                                └────────────────────────┘
+```
+
+---
+## 📄 License
+
+This project is open-source and available under the MIT License.
+
+---
+
+## 📞 Contact
+
+**Morad Boussagman**  
+GitHub: [@MoradBoussagman](https://github.com/MoradBoussagman)  
+Project: [DataPipeLine](https://github.com/MoradBoussagman/DataPipeLine)
+
+---
+
+**Happy Data Processing! 🚀**
