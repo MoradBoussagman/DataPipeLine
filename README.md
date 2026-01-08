@@ -425,12 +425,4 @@ This project is open-source and available under the MIT License.
 
 ---
 
-## 📞 Contact
-
-**Morad Boussagman**  
-GitHub: [@MoradBoussagman](https://github.com/MoradBoussagman)  
-Project: [DataPipeLine](https://github.com/MoradBoussagman/DataPipeLine)
-
----
-
 **Happy Data Processing! 🚀**
