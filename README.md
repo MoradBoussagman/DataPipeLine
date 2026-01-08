@@ -395,14 +395,14 @@ docker compose up -d
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Airflow Webserver                     │
-│                  (localhost:8085)                        │
+│                    Airflow Webserver                    │
+│                  (localhost:8085)                       │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Airflow Scheduler                       │
-│              (Monitors and triggers DAGs)                │
+│                  Airflow Scheduler                      │
+│              (Monitors and triggers DAGs)               │
 └────────────┬────────────────────────────┬───────────────┘
              │                            │
              ▼                            ▼
