@@ -1,0 +1,5 @@
+Field	        Value
+Connection Id	spark_cluster (must match the DAG)
+Connection Type	Spark
+Description	    
+Host	        spark://spark-master:7077
