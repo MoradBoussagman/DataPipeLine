@@ -15,4 +15,5 @@ USER airflow
 
 RUN pip install --no-cache-dir \
     pyspark==3.5.0 \
-    apache-airflow-providers-apache-spark
+    apache-airflow-providers-apache-spark \
+    kafka-python==2.0.2
