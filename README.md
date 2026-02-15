@@ -63,7 +63,7 @@ DataPipeLine/
 │   └── Dockerfile               # Airflow with Java & PySpark
 ├── dags/
 │   ├── hello_spark_dag.py       # Batch processing DAG
-│   └── kafka_spark_pipeline.py  # Kafka streaming DAG
+│   └── kafka_spark_dag.py  # Kafka streaming DAG
 ├── logs/                        # Auto-generated during runtime
 ├── plugins/                     # For custom Airflow plugins
 ├── scripts/
@@ -152,9 +152,8 @@ Data Flow (Streaming Pipeline):
 ## 📦 Prerequisites
 
 * **Docker Desktop** or **Docker Engine** (20.x+)
-* **Docker Compose** (v2.x recommended)
-* Minimum **10GB RAM** allocated to Docker (increased for Kafka)
-* Minimum **25GB disk space**
+* Minimum **8GB RAM**
+* Minimum **20GB disk space**
 * **Git** for cloning
 
 ---
@@ -228,11 +227,11 @@ Apache Kafka is a distributed streaming platform that:
 - **Stores** streams of records in a fault-tolerant way
 - **Processes** streams of records as they occur
 
-### Kafka Architecture in Your Setup
+### Kafka Architecture
 
 #### **KRaft Mode (No Zookeeper!)**
 
-Your setup uses Kafka in **KRaft mode** (Kafka Raft), which eliminates the need for Zookeeper:
+this setup uses Kafka in **KRaft mode** (Kafka Raft), which eliminates the need for Zookeeper:
 
 ```yaml
 broker:
@@ -274,7 +273,7 @@ broker:
 
 ### How Airflow Interacts with Kafka
 
-Your `kafka_spark_pipeline.py` DAG demonstrates the complete workflow:
+`kafka_spark_pipeline.py` DAG demonstrates the complete workflow:
 
 ```python
 # Task 1: Create Kafka topics
@@ -327,7 +326,7 @@ df = spark.readStream \
     .load()
 ```
 
-### Your Kafka Spark Job Explained
+### Kafka Spark Job
 
 Let's break down `kafka_spark_job.py`:
 
