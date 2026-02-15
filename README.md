@@ -1,4 +1,4 @@
-# DataPipeline: Airflow + Spark
+# DataPipeline: Airflow + Spark + kafka
 
 A production-ready **Data Pipeline** combining **Apache Airflow 2.8.1** and **Apache Spark 3.5.0** for orchestrating and processing distributed data workflows. Clone this repository and start running Spark jobs from Airflow in minutes!
 
