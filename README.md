@@ -1,13 +1,13 @@
 # DataPipeline: Airflow + Spark + kafka
 
-A production-ready **Data Pipeline** combining **Apache Airflow 2.8.1** and **Apache Spark 3.5.0** for orchestrating and processing distributed data workflows. Clone this repository and start running Spark jobs from Airflow in minutes!
+A initial  **Data Pipeline** combining **Apache Airflow 2.8.1** , Apache kafka  and **Apache Spark 3.5.0** for orchestrating and processing distributed data workflows. Clone this repository and start running Spark jobs from Airflow in minutes!
 
 ---
 
 ## 📋 Table of Contents
 
 - [Features](#features)
-- [What's Included](#whats-included)A
+- [What's Included](#whats-included)
 - [Technologies](#technologies)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
@@ -21,6 +21,7 @@ A production-ready **Data Pipeline** combining **Apache Airflow 2.8.1** and **Ap
 ## ✨ Features
 
 - **Full Airflow Integration**: Complete Airflow setup with webserver, scheduler, and PostgreSQL backend
+- **Kafka-broker** : Modern KRaft-based message broker (no Zookeeper required)
 - **Spark Cluster**: Master-worker Spark cluster configuration for distributed processing
 - **Working Example**: Pre-configured DAG demonstrating Spark job submission
 - **Containerized Environment**: Docker Compose orchestration for all services
@@ -34,7 +35,7 @@ A production-ready **Data Pipeline** combining **Apache Airflow 2.8.1** and **Ap
 When you clone this repository, you get everything you need:
 
 ### ✅ **Pre-Configured Files**
-- **Docker Compose** setup for all services
+- **Docker Compose** setup for all services (kafka , postges ,etc)
 - **Airflow Dockerfile** with Java and PySpark
 - **Spark Dockerfile** for cluster nodes
 - **Example DAG** (`hello_spark_dag.py`) - ready to run
@@ -48,13 +49,15 @@ DataPipeLine/
 │   └── Dockerfile               # Airflow with Java & PySpark
 ├── dags/
 │   └── hello_spark_dag.py       # Example DAG
+|   └── kafka_spark_dag.py       # Example DAG
 ├── logs/                        # Auto-generated during runtime
 ├── plugins/                     # For custom Airflow plugins
 ├── scripts/
 │   └── hello_spark.py           # Sample PySpark job
+|   └── kafka_spark_job.py           # Sample PySpark job
 ├── spark/
 │   └── Dockerfile               # Spark base official image
-├── connection                   # Airflow connection setup
+├── connection_string            # Airflow connection setup
 ├── docker-compose.yaml          # Full orchestration 
 └── README.md                    # documentation
 ```
@@ -69,7 +72,7 @@ DataPipeLine/
 | **Docker Compose** | 2.x+ | Multi-container orchestration |
 | **PySpark** | 3.5.0 | Python API for Spark |
 | **OpenJDK** | 17 | Java runtime for Spark |
-
+| **Kafka** | 3.5.0 | streaming messages |
 ---
 
 ## 📦 Prerequisites
@@ -117,6 +120,7 @@ spark-worker            Up
 airflow-webserver       Up (healthy)
 airflow-scheduler       Up
 airflow-init            Exited (0)
+broker                  Up
 ```
 
 ### 4. Access the Interfaces
@@ -128,7 +132,7 @@ airflow-init            Exited (0)
 
 ---
 
-## 💡 Usage
+## 💡 Usage (hello_spark_dag.py)
 
 ### Running the Included Example
 
