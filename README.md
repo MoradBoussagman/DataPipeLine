@@ -449,7 +449,37 @@ Data Flow (Streaming Pipeline):
 5. Processed results written to output-topic
 6. Consumer task reads and displays results
 ```
+---
+## 🗂️ Data Catalog — DataHub
 
+DataHub is used as the metadata catalog to track data sources, lineage, and quality metrics across the pipeline.
+
+### Setup
+
+Install the DataHub CLI:
+```bash
+pip install acryl-datahub
+```
+
+Start DataHub (runs independently from the main stack):
+```bash
+datahub docker quickstart
+```
+
+Access the UI at [http://localhost:9002](http://localhost:9002)
+
+| Field    | Value    |
+|----------|----------|
+| Username | `datahub` |
+| Password | `datahub` |
+
+### Metadata Ingestion
+
+Install the PostgreSQL plugin and run ingestion to catalog all pipeline tables:
+```bash
+pip install 'acryl-datahub[postgres]'
+datahub ingest -c datahub_postgres.yml
+```
 
 ---
 ## 📄 License
