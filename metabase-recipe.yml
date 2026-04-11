@@ -1,0 +1,10 @@
+source:
+    type: metabase
+    config:
+        connect_uri: 'http://localhost:3000'
+        username: one1piece1sekai1@gmail.com
+        password: morad1234
+sink:
+    type: datahub-rest
+    config:
+        server: 'http://localhost:8080'
