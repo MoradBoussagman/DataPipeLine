@@ -1,491 +1,281 @@
-# DataPipeline: Airflow + Spark + kafka
+# Air Quality Data Pipeline
 
-A initial  **Data Pipeline** combining **Apache Airflow 2.8.1** , Apache kafka  and **Apache Spark 3.5.0** for orchestrating and processing distributed data workflows. Clone this repository and start running Spark jobs from Airflow in minutes!
+This repository is a containerized air-quality platform built around Airflow, Kafka, Spark, PostgreSQL, MLflow, FastAPI, and Metabase.
 
----
+It currently supports:
 
-## 📋 Table of Contents
+- Real-time ingestion of air-quality readings from OpenAQ
+- Kafka-based routing of valid readings and anomalies
+- Spark-based processing inside Airflow DAGs
+- PostgreSQL storage for processed readings, anomalies, metrics, and model metadata
+- MLflow training, registration, and production-alias promotion
+- FastAPI model-serving and prediction tracking
+- Metabase dashboards on top of the same PostgreSQL instance
 
-- [Features](#features)
-- [What's Included](#whats-included)
-- [Technologies](#technologies)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-- [Creating Your Own Pipelines](#creating-your-own-pipelines)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
+## Stack
 
----
+Core services started by `docker-compose.yaml`:
 
-## ✨ Features
+- `postgres` for Airflow metadata, pipeline data, and MLflow backend storage
+- `airflow-webserver`, `airflow-scheduler`, `airflow-init`
+- `spark-master`, `spark-worker`
+- `broker` (Kafka in KRaft mode)
+- `kafka-ui`
+- `mlflow`
+- `fastapi`
+- `metabase`
 
-- **Full Airflow Integration**: Complete Airflow setup with webserver, scheduler, and PostgreSQL backend
-- **Kafka-broker** : Modern KRaft-based message broker (no Zookeeper required)
-- **Spark Cluster**: Master-worker Spark cluster configuration for distributed processing
-- **Working Example**: Pre-configured DAG demonstrating Spark job submission
-- **Containerized Environment**: Docker Compose orchestration for all services
-- **Ready to Run**: Clone and start - no additional configuration needed
-- **Production Ready**: Includes proper initialization, user management, and logging
+## Repository Layout
 
----
-
-## 📦 What's Included
-
-When you clone this repository, you get everything you need:
-
-### ✅ **Pre-Configured Files**
-- **Docker Compose** setup for all services (kafka , postges ,etc)
-- **Airflow Dockerfile** with Java and PySpark
-- **Spark Dockerfile** for cluster nodes
-- **Example DAG** (`hello_spark_dag.py`) - ready to run
-- **Sample Spark Job** (`hello_spark.py`) - working PySpark script
-
-### 📁 **Project Structure**
-
-```
-DataPipeLine/
-├── airflow/
-│   └── Dockerfile               # Airflow with Java & PySpark
-├── dags/
-│   └── hello_spark_dag.py       # Example DAG
-|   └── kafka_spark_dag.py       # Example DAG
-├── logs/                        # Auto-generated during runtime
-├── plugins/                     # For custom Airflow plugins
-├── scripts/
-│   └── hello_spark.py           # Sample PySpark job
-|   └── kafka_spark_job.py           # Sample PySpark job
-├── spark/
-│   └── Dockerfile               # Spark base official image
-├── connection_string            # Airflow connection setup
-├── docker-compose.yaml          # Full orchestration 
-└── README.md                    # documentation
+```text
+DataPipeline/
+|-- airflow/                  # Airflow image with Java, PySpark, Kafka libs, Docker CLI
+|-- dags/                     # Airflow DAGs
+|-- fastapi/                  # Prediction API container
+|-- init/                     # PostgreSQL bootstrap SQL
+|-- logs/                     # Airflow logs
+|-- mlscripts/                # Training and backfill scripts
+|-- scripts/                  # Kafka, Spark, ETL, and DB helpers
+|-- spark/                    # Spark image
+|-- .env
+|-- docker-compose.yaml
+`-- README.md
 ```
 
-## 🛠 Technologies
+## Main Workflows
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Apache Airflow** | 2.8.1 | Workflow orchestration and scheduling |
-| **Apache Spark** | 3.5.0 | Distributed data processing |
-| **PostgreSQL** | 13 | Airflow metadata database |
-| **Docker Compose** | 2.x+ | Multi-container orchestration |
-| **PySpark** | 3.5.0 | Python API for Spark |
-| **OpenJDK** | 17 | Java runtime for Spark |
-| **Kafka** | 3.5.0 | streaming messages |
----
+### 1. Real-time ingestion
 
-## 📦 Prerequisites
+The real-time path is implemented mainly through `dags/dag_phase1.py`:
 
-- **Docker Desktop** or **Docker Engine** (20.x+)
-- **Docker Compose** (v2.x recommended)
-- Minimum **8GB RAM** allocated to Docker
-- Minimum **20GB disk space**
-- **Git** for cloning
+1. Create Kafka topics
+2. Fetch the latest OpenAQ readings for a configured location
+3. Submit a Spark job that reads `raw_data` and routes rows to:
+   - `processed_data`
+   - `anomalies`
+4. Persist both streams into PostgreSQL
 
----
+Key files:
 
-## 🚀 Quick Start
+- `scripts/topics.py`
+- `scripts/fetch.py`
+- `scripts/consumer.py`
+- `scripts/db_writer.py`
 
-### 1. Clone the Repository
+### 2. Model training
+
+`dags/dag_phase2.py` watches `processed_readings` and retrains when enough new rows are available.
+
+The training job:
+
+- loads data from PostgreSQL
+- builds lookback-window features
+- trains multiple regressors
+- compares RMSE/MAE
+- registers the best model in MLflow
+- updates the `production` alias when the new model is better
+- stores model metadata in PostgreSQL table `model_registry`
+
+Key files:
+
+- `dags/dag_phase2.py`
+- `mlscripts/experiment2.py`
+
+### 3. Historical backfill training
+
+`dags/dag_backfill.py` retrains on a user-specified date range passed as DAG params:
+
+```json
+{
+  "start_date": "2026-01-01",
+  "end_date": "2026-02-01"
+}
+```
+
+Key files:
+
+- `dags/dag_backfill.py`
+- `mlscripts/experiment_backfill.py`
+
+### 4. Prediction serving
+
+The FastAPI service loads the MLflow production model alias and continuously:
+
+- reads the latest processed rows
+- predicts next `pm25` and `pm10`
+- waits for the next actual row
+- stores prediction vs actual values in PostgreSQL
+
+Key file:
+
+- `fastapi/main.py`
+
+## Database Objects
+
+The main bootstrap lives in `init/01_create_tables.sql`.
+
+Created databases:
+
+- `metabaseappdb`
+- `mlflow`
+- `airquality`
+
+Main tables in `airquality`:
+
+- `processed_readings`
+- `anomalies`
+- `metrics_batch`
+- `thresholds`
+- `predictions`
+- `model_registry`
+
+Tables created later by DAGs at runtime:
+
+- `training_log`
+- `backfill_log`
+
+## DAG Inventory
+
+### Active project DAGs
+
+- `dag_phase1`: OpenAQ -> Kafka -> Spark -> PostgreSQL
+- `dag_phase2`: sensor-driven model retraining with MLflow
+- `dag_backfill`: manual historical retraining
+- `dag_realtime`: earlier Python-only real-time variant of phase 1
+
+### Demo or older DAGs kept in the repo
+
+- `hello_spark_dag.py`
+- `kafka_spark_dag.py`
+- `ETL_AQ.py`
+- `phase1.py`
+- `dag_daily.py`
+
+`dag_daily.py` currently references `raw_readings` and `daily_metrics`, which are not created by `init/01_create_tables.sql`. Treat it as legacy/incomplete unless you add the missing schema.
+
+## Exposed Interfaces
+
+After startup, the default local endpoints are:
+
+- Airflow: `http://localhost:8085`
+- Spark master UI: `http://localhost:8081`
+- Kafka UI: `http://localhost:8090`
+- MLflow: `http://localhost:5000`
+- FastAPI: `http://localhost:8000`
+- Metabase: `http://localhost:3000`
+
+Default credentials present in the repo:
+
+- Airflow: `admin` / `admin`
+- Metabase metadata DB user: `metabase`
+
+Environment values from `.env`:
+
+- `POSTGRES_USER=airflow`
+- `POSTGRES_PASSWORD=airflow`
+- `POSTGRES_DB=airflow`
+- `POSTGRES_PORT=5432`
+- `AIRFLOW_PORT=8085`
+
+## Quick Start
+
+### 1. Build the containers
 
 ```bash
-git clone https://github.com/MoradBoussagman/DataPipeLine.git
-cd DataPipeLine
-```
-
-### 2. Build and Start
-
-```bash
-# Build Docker images
 docker compose build
+```
 
-# Start all services
+### 2. Start the stack
+
+```bash
 docker compose up -d
 ```
 
-
-### 3. Verify Everything is Running
+### 3. Check service state
 
 ```bash
 docker compose ps
 ```
 
-Expected output:
-```
-NAME                    STATUS
-postgres                Up
-spark-master            Up
-spark-worker            Up
-airflow-webserver       Up (healthy)
-airflow-scheduler       Up
-airflow-init            Exited (0)
-broker                  Up
-```
+### 4. Open the main UIs
 
-### 4. Access the Interfaces
+- Airflow: `http://localhost:8085`
+- MLflow: `http://localhost:5000`
+- FastAPI: `http://localhost:8000`
+- FastAPI docs: `http://localhost:8000/docs`
+- Kafka UI: `http://localhost:8090`
+- Metabase: `http://localhost:3000`
 
-- **Airflow UI**: http://localhost:8085
-  - Username: `admin`
-  - Password: `admin`
-- **Spark Master UI**: http://localhost:8080
+## Airflow Notes
 
----
+`airflow-init` currently does three bootstrap actions:
 
-## 💡 Usage (hello_spark_dag.py)
+- runs Airflow DB migrations
+- creates the default admin user
+- creates the Spark connection `spark_cluster`
 
-### Running the Included Example
+The compose file also mounts the Docker socket into Airflow so DAGs can run `docker exec` against the `mlflow` container for training commands.
 
-The repository includes a working example DAG that you can run immediately!
+## FastAPI Endpoints
 
-#### Step 1: Set Up Spark Connection
+The API exposes:
 
-Choose **ONE** of these methods:
+- `GET /health`
+- `GET /predictions?limit=50`
+- `GET /latest`
 
-**Option A: Via Airflow UI (Recommended)**
-
-1. Open http://localhost:8085 and login
-2. Go to **Admin → Connections**
-3. Click **+** to add a new connection
-4. Fill in:
-   - **Connection Id**: `spark_cluster`
-   - **Connection Type**: `Spark`
-   - **Host**: `spark-master`
-   - **Port**: `7077`
-5. Click **Save**
-
-**Option B: Via CLI**
+Example:
 
 ```bash
-docker compose exec airflow-webserver airflow connections add \
-    'spark_cluster' \
-    --conn-type 'spark' \
-    --conn-host 'spark-master' \
-    --conn-port '7077'
+curl http://localhost:8000/health
+curl http://localhost:8000/latest
 ```
 
+## MLflow Notes
 
-#### Step 2: Run the Example DAG
+Training scripts use:
 
-1. In Airflow UI, find the DAG **`hello_spark_cluster`**
-2. Toggle the DAG to **ON** (unpause)
-3. Click **▶️ Trigger DAG** button
-4. Click on the running task → **Log** to see output
+- experiment `air_quality_aqi_prediction` for the main retraining flow
+- experiment `air_quality_backfill` for backfill runs
 
-#### Step 3: Check Results
+Registered model names:
 
-You should see in the logs:
+- `AirQuality_AQI_predictor`
+- `AirQuality_AQI_predictor_backfill`
 
-```
-==================================================
-HELLO WORLD FROM SPARK CLUSTER
-==================================================
-+-----+-----+
-| word|count|
-+-----+-----+
-|Hello|    1|
-|World|    2|
-| from|    3|
-|Spark|    4|
-+-----+-----+
+The FastAPI service reads `AirQuality_AQI_predictor@production`.
 
-Spark job completed successfully!
-```
+## Important Caveats
 
----
+- Several secrets are hardcoded in the repo today, including the OpenAQ API key and SMTP credentials. Replace them with environment variables before any real deployment.
+- `scripts/fetch.py` and some DAGs are tied to a single OpenAQ `LOCATION_ID`.
+- `dag_phase2.py` is configured with `MIN_ROWS = 2` for testing, while the comments still describe a much larger production threshold.
+- The repository contains generated MLflow artifacts under `mlscripts/artifacts/`; they are useful for local continuity but make the repo heavy.
+- Some files are historical or experimental. Prefer `dag_phase1.py`, `dag_phase2.py`, `dag_backfill.py`, `fastapi/main.py`, and `init/01_create_tables.sql` when navigating the current implementation.
 
-## 🔨 Creating Your Own Pipelines
-
-Now that the example works, create your own data pipelines!
-
-### Adding a New Spark Job
-
-**1. Create your PySpark script in `scripts/` folder:**
+## Useful Commands
 
 ```bash
-# Create new file: scripts/my_processing.py
-```
-
-```python
-from pyspark.sql import SparkSession
-
-def main():
-    spark = SparkSession.builder \
-        .appName("MyProcessing") \
-        .getOrCreate()
-    
-    # Your data processing logic
-    data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
-    df = spark.createDataFrame(data, ["name", "age"])
-    
-    # Process data
-    result = df.filter(df.age > 25)
-    result.show()
-    
-    spark.stop()
-
-if __name__ == "__main__":
-    main()
-```
-
-**2. Create your DAG in `dags/` folder:**
-
-```bash
-# Create new file: dags/my_pipeline.py
-```
-
-```python
-from airflow import DAG
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
-from datetime import datetime
-
-default_args = {
-    "owner": "airflow",
-    "start_date": datetime(2026, 1, 1),
-}
-
-with DAG(
-    dag_id="my_data_pipeline",
-    default_args=default_args,
-    schedule="@daily",  # Run every day
-    catchup=False,
-    tags=["production"]
-) as dag:
-
-    run_processing = SparkSubmitOperator(
-        task_id="run_processing",
-        application="/opt/airflow/scripts/my_processing.py",
-        conn_id="spark_cluster",
-        name="my_processing_job",
-        conf={"spark.master": "spark://spark-master:7077"}
-    )
-```
-
-**3. Your new DAG will automatically appear in Airflow UI!**
-
-No restart needed - Airflow watches the `dags/` folder automatically.
-
-### DAG Schedule Options
-
-```python
-schedule="@daily"        # Every day at midnight
-schedule="@hourly"       # Every hour
-schedule="0 9 * * *"     # Every day at 9 AM
-schedule="*/15 * * * *"  # Every 15 minutes
-schedule=None            # Manual trigger only
-```
-
----
-
-## 🛠 Useful Commands
-
-### Managing Services
-
-```bash
-# View logs
-docker compose logs -f [service-name]
-
-# Stop all services
-docker compose down
-
-# Restart specific service
+docker compose logs -f airflow-scheduler
+docker compose logs -f mlflow
+docker compose logs -f fastapi
 docker compose restart airflow-scheduler
-
-# Remove everything (including data)
+docker compose down
 docker compose down -v
 ```
 
-### Airflow Commands
+Useful Airflow checks:
 
 ```bash
-# List all DAGs
 docker compose exec airflow-webserver airflow dags list
-
-# Test a DAG
-docker compose exec airflow-webserver airflow dags test my_data_pipeline
-
-# Check DAG for errors
-docker compose exec airflow-webserver airflow dags list-import-errors
-
-# Create a new admin user
-docker compose exec airflow-webserver airflow users create \
-    --username myuser \
-    --password mypass \
-    --firstname John \
-    --lastname Doe \
-    --role Admin \
-    --email john@example.com
-```
-
-### Spark Commands
-
-```bash
-# Check Spark master status
-docker compose logs spark-master
-
-# Check Spark worker status
-docker compose logs spark-worker
-
-# Submit Spark job manually
-docker compose exec spark-master spark-submit \
-    --master spark://spark-master:7077 \
-    /opt/airflow/scripts/hello_spark.py
-```
-
----
-
-## 🔧 Troubleshooting
-
-### DAG Not Appearing?
-
-```bash
-# Check for import errors
-docker compose exec airflow-webserver airflow dags list-import-errors
-
-# Restart scheduler
-docker compose restart airflow-scheduler
-
-# Check DAG file is mounted
-docker compose exec airflow-webserver ls /opt/airflow/dags
-```
-
-### Connection Not Working?
-
-```bash
-# List all connections
 docker compose exec airflow-webserver airflow connections list
-
-# Test connection
-docker compose exec airflow-webserver airflow connections get spark_cluster
-
-# Delete and recreate
-docker compose exec airflow-webserver airflow connections delete spark_cluster
-docker compose exec airflow-webserver airflow connections add \
-    'spark_cluster' --conn-type 'spark' --conn-host 'spark-master' --conn-port '7077'
-```
-
-### Spark Job Failing?
-
-```bash
-# Check Spark master logs
-docker compose logs spark-master
-
-# Check if workers are connected
-# Open http://localhost:8080 and look for connected workers
-
-# Verify script exists
-docker compose exec airflow-webserver cat /opt/airflow/scripts/hello_spark.py
-```
-
-### Port Already in Use?
-
-Change ports in `.env` file:
-
-```bash
-AIRFLOW_PORT=8090  # Change from 8085
-POSTGRES_PORT=5433  # Change from 5432
-```
-
-Then restart:
-
-```bash
-docker compose down
-docker compose up -d
+docker compose exec airflow-webserver airflow dags list-import-errors
 ```
 
 ---
 
-## 📊 Architecture Overview
-
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         Airflow Webserver                            │
-│                        (localhost:8085)                              │
-│           - DAG Management                                           │
-│           - Job Monitoring                                           │
-│           - Connection Configuration                                 │
-└────────────────────────┬─────────────────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                       Airflow Scheduler                              │
-│           - Monitors DAGs                                            │
-│           - Triggers SparkSubmitOperators                            │
-│           - Manages Task Dependencies                                │
-└────────┬───────────────────────────────┬───────────────────────┬────┘
-         │                               │                       │
-         ▼                               ▼                       ▼
-┌────────────────┐         ┌─────────────────────┐   ┌──────────────────┐
-│   PostgreSQL   │         │   Spark Master      │   │  Kafka Broker    │
-│ (Metadata DB)  │         │  (localhost:8080)   │   │ (localhost:9092) │
-│                │         │  - Job Scheduling   │   │  - KRaft Mode    │
-│ - DAG State    │         │  - Resource Mgmt    │   │  - Topics        │
-│ - Task Logs    │         │  - Worker Coord.    │   │  - Partitions    │
-└────────────────┘         └──────────┬──────────┘   └────────┬─────────┘
-                                      │                       │
-                                      ▼                       │
-                          ┌───────────────────────┐           │
-                          │    Spark Worker(s)    │           │
-                          │  - Execute Tasks      │◄──────────┘
-                          │  - Process Streams    │   Consume
-                          │  - Write Results      │   Messages
-                          └───────────┬───────────┘
-                                      │
-                                      ▼
-                          ┌───────────────────────┐
-                          │   Kafka UI            │
-                          │ (localhost:8090)      │
-                          │  - Topic Monitoring   │
-                          │  - Message Browser    │
-                          │  - Consumer Groups    │
-                          └───────────────────────┘
-
-Data Flow (Streaming Pipeline):
-1. Airflow Scheduler triggers kafka_spark_pipeline DAG
-2. Python tasks create Kafka topics and produce messages
-3. SparkSubmitOperator submits streaming job to Spark Master
-4. Spark Workers consume from input-topic, process data
-5. Processed results written to output-topic
-6. Consumer task reads and displays results
-```
----
-## 🗂️ Data Catalog — DataHub
-
-DataHub is used as the metadata catalog to track data sources, lineage, and quality metrics across the pipeline.
-
-### Setup
-
-Install the DataHub CLI:
-```bash
-pip install acryl-datahub
-```
-
-Start DataHub (runs independently from the main stack):
-```bash
-datahub docker quickstart
-```
-
-Access the UI at [http://localhost:9002](http://localhost:9002)
-
-| Field    | Value    |
-|----------|----------|
-| Username | `datahub` |
-| Password | `datahub` |
-
-### Metadata Ingestion
-
-Install the PostgreSQL plugin and run ingestion to catalog all pipeline tables:
-```bash
-pip install 'acryl-datahub[postgres]'
-datahub ingest -c datahub_postgres.yml
-```
-
----
 ## 📄 License
 
 This project is open-source and available under the MIT License.
 
 ---
-
-**Happy Data Processing! 🚀**
