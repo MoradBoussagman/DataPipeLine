@@ -164,6 +164,52 @@ After startup, the default local endpoints are:
 - FastAPI: `http://localhost:8000`
 - Metabase: `http://localhost:3000`
 
+## 📊 Architecture Overview
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                         Airflow Webserver                            │
+│                        (localhost:8085)                              │
+│           - DAG Management                                           │
+│           - Job Monitoring                                           │
+│           - Connection Configuration                                 │
+└────────────────────────┬─────────────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                       Airflow Scheduler                              │
+│           - Monitors DAGs                                            │
+│           - Triggers SparkSubmitOperators                            │
+│           - Manages Task Dependencies                                │
+└────────┬───────────────────────────────┬───────────────────────┬────┘
+         │                               │                       │
+         ▼                               ▼                       ▼
+┌────────────────┐         ┌─────────────────────┐   ┌──────────────────┐
+│   PostgreSQL   │         │   Spark Master      │   │  Kafka Broker    │
+│ (Metadata DB)  │         │  (localhost:8081)   │   │ (localhost:9093) │
+│                │         │  - Job Scheduling   │   │  - KRaft Mode    │
+│ - DAG State    │         │  - Resource Mgmt    │   │  - Topics        │
+│ - Task Logs    │         │  - Worker Coord.    │   │  - Partitions    │
+└────────────────┘         └──────────┬──────────┘   └────────┬─────────┘
+                                      │                       │
+                                      ▼                       │
+                          ┌───────────────────────┐           │
+                          │    Spark Worker(s)    │           │
+                          │  - Execute Tasks      │◄──────────┘
+                          │  - Process Streams    │   Consume
+                          │  - Write Results      │   Messages
+                          └───────────┬───────────┘
+                                      │
+                                      ▼
+                          ┌───────────────────────┐
+                          │   Kafka UI            │
+                          │ (localhost:8090)      │
+                          │  - Topic Monitoring   │
+                          │  - Message Browser    │
+                          │  - Consumer Groups    │
+                          └───────────────────────┘
+```
+
 Default credentials present in the repo:
 
 - Airflow: `admin` / `admin`
