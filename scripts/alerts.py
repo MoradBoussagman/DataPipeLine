@@ -5,7 +5,7 @@ from email.mime.multipart import MIMEMultipart
 SMTP_HOST     = "smtp.gmail.com"
 SMTP_PORT     = 587
 SMTP_USER     = "zakaria.lagdrori.29@edu.uiz.ac.ma"
-SMTP_PASSWORD = "xeuh uwre tkdw wyox"  # replace with your app password
+SMTP_PASSWORD = ""  # replace with your app password
 
 RECIPIENTS = [
     "morad.boussagman@gmail.com",
